@@ -31,6 +31,31 @@ const selectedDevice = computed(() =>
 
 const existingIds = computed(() => devices.value.map((device) => device.id))
 
+const overlapIds = computed(() => {
+  const overlaps = new Set()
+  const list = devices.value
+
+  for (let i = 0; i < list.length; i += 1) {
+    const a = list[i]
+    for (let j = i + 1; j < list.length; j += 1) {
+      const b = list[j]
+      const separated =
+        a.x + a.width <= b.x ||
+        b.x + b.width <= a.x ||
+        a.y + a.height <= b.y ||
+        b.y + b.height <= a.y
+      if (!separated) {
+        overlaps.add(a.id)
+        overlaps.add(b.id)
+      }
+    }
+  }
+
+  return Array.from(overlaps)
+})
+
+const hasOverlap = computed(() => overlapIds.value.length > 0)
+
 const addDevice = (device) => {
   devices.value = [...devices.value, device]
 }
@@ -127,6 +152,9 @@ const resetZoom = () => {
           <h2>Layout Canvas</h2>
           <div class="panel__controls">
             <p class="hint">Origin is top-left. Click a rectangle to edit.</p>
+            <p v-if="hasOverlap" class="warning-banner">
+              Overlap detected: {{ overlapIds.join(', ') }}
+            </p>
             <div class="zoom">
               <button class="icon-button" type="button" @click="zoomOut">-</button>
               <input
@@ -149,6 +177,7 @@ const resetZoom = () => {
           :width="canvasSize.width"
           :height="canvasSize.height"
           :zoom="zoom"
+          :overlap-ids="overlapIds"
           @select="openEdit"
           @zoom="setZoom"
         />

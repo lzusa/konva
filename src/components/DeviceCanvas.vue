@@ -22,6 +22,10 @@ const props = defineProps({
   zoom: {
     type: Number,
     default: 1
+  },
+  overlapIds: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -30,7 +34,10 @@ const emit = defineEmits(['select', 'zoom'])
 const containerRef = ref(null)
 let stage = null
 let layer = null
+let gridLayer = null
 let resizeObserver = null
+
+const gridSpacing = 100
 
 const getContainerSize = () => {
   if (!containerRef.value) {
@@ -64,6 +71,9 @@ const createStage = () => {
 
   stage.scale({ x: props.zoom, y: props.zoom })
   stage.draggable(true)
+
+  gridLayer = new Konva.Layer({ listening: false })
+  stage.add(gridLayer)
 
   layer = new Konva.Layer()
   stage.add(layer)
@@ -105,17 +115,21 @@ const renderDevices = () => {
   }
 
   layer.destroyChildren()
+  const overlapSet = new Set(props.overlapIds)
 
   props.devices.forEach((device) => {
     const isSelected = device.id === props.selectedId
+    const isOverlap = overlapSet.has(device.id)
+    const fill = isOverlap ? '#ffb3b3' : isSelected ? '#ffd4a5' : '#9ec4ff'
+    const stroke = isOverlap ? '#c81e1e' : isSelected ? '#e46c0a' : '#2a4b8d'
 
     const rect = new Konva.Rect({
       x: device.x,
       y: device.y,
       width: device.width,
       height: device.height,
-      fill: isSelected ? '#ffd4a5' : '#9ec4ff',
-      stroke: isSelected ? '#e46c0a' : '#2a4b8d',
+      fill,
+      stroke,
       strokeWidth: isSelected ? 3 : 2,
       cornerRadius: 6,
       shadowColor: 'rgba(0, 0, 0, 0.15)',
@@ -145,11 +159,35 @@ const renderDevices = () => {
   layer.draw()
 }
 
+const renderGrid = () => {
+  if (!gridLayer) {
+    return
+  }
+
+  gridLayer.destroyChildren()
+
+  for (let y = 0; y <= props.height; y += gridSpacing) {
+    for (let x = 0; x <= props.width; x += gridSpacing) {
+      gridLayer.add(
+        new Konva.Circle({
+          x,
+          y,
+          radius: 1.5,
+          fill: 'rgba(15, 24, 38, 0.2)'
+        })
+      )
+    }
+  }
+
+  gridLayer.draw()
+}
+
 onMounted(() => {
   if (!containerRef.value) {
     return
   }
   createStage()
+  renderGrid()
   renderDevices()
 
   resizeObserver = new ResizeObserver(() => {
@@ -165,6 +203,7 @@ watch(
       stage.scale({ x: props.zoom, y: props.zoom })
       applyStageSize()
     }
+    renderGrid()
     renderDevices()
   },
   { deep: true }
@@ -180,6 +219,7 @@ onBeforeUnmount(() => {
     stage.destroy()
     stage = null
     layer = null
+    gridLayer = null
   }
 })
 </script>
