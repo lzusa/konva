@@ -38,6 +38,7 @@ let gridLayer = null
 let resizeObserver = null
 
 const gridSpacing = 100
+const gridColors = ['#f6f7fb', '#ffffff']
 
 const getContainerSize = () => {
   if (!containerRef.value) {
@@ -166,14 +167,19 @@ const renderGrid = () => {
 
   gridLayer.destroyChildren()
 
-  for (let y = 0; y <= props.height; y += gridSpacing) {
-    for (let x = 0; x <= props.width; x += gridSpacing) {
+  const cols = Math.ceil(props.width / gridSpacing)
+  const rows = Math.ceil(props.height / gridSpacing)
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const fill = gridColors[(row + col) % 2]
       gridLayer.add(
-        new Konva.Circle({
-          x,
-          y,
-          radius: 1.5,
-          fill: 'rgba(15, 24, 38, 0.2)'
+        new Konva.Rect({
+          x: col * gridSpacing,
+          y: row * gridSpacing,
+          width: gridSpacing,
+          height: gridSpacing,
+          fill
         })
       )
     }
