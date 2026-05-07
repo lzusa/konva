@@ -73,8 +73,9 @@ p {
 
 .page__main {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
   gap: 24px;
+  align-items: start;
 }
 
 .eyebrow {
@@ -126,6 +127,16 @@ p {
   padding: 20px;
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow);
+}
+
+.panel--form {
+  padding: 16px;
+  position: sticky;
+  top: 24px;
+}
+
+.panel--canvas {
+  padding: 20px 24px 24px;
 }
 
 .panel__header {

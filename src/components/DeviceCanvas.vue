@@ -36,9 +36,11 @@ let stage = null
 let layer = null
 let gridLayer = null
 let resizeObserver = null
+let gridRaf = 0
 
 const gridSpacing = 100
 const gridColors = ['#f6f7fb', '#ffffff']
+const gridOverscan = 2
 
 const getContainerSize = () => {
   if (!containerRef.value) {
@@ -62,6 +64,28 @@ const applyStageSize = () => {
   }
 }
 
+const clampStagePosition = () => {
+  if (!stage) {
+    return
+  }
+
+  const scale = stage.scaleX()
+  const viewWidth = stage.width()
+  const viewHeight = stage.height()
+  const worldWidth = props.width * scale
+  const worldHeight = props.height * scale
+
+  const minX = Math.min(0, viewWidth - worldWidth)
+  const minY = Math.min(0, viewHeight - worldHeight)
+
+  const clampedX = Math.min(0, Math.max(minX, stage.x()))
+  const clampedY = Math.min(0, Math.max(minY, stage.y()))
+
+  if (clampedX !== stage.x() || clampedY !== stage.y()) {
+    stage.position({ x: clampedX, y: clampedY })
+  }
+}
+
 const createStage = () => {
   const { width, height } = getContainerSize()
   stage = new Konva.Stage({
@@ -73,7 +97,7 @@ const createStage = () => {
   stage.scale({ x: props.zoom, y: props.zoom })
   stage.draggable(true)
 
-  gridLayer = new Konva.Layer({ listening: false })
+  gridLayer = new Konva.FastLayer({ listening: false })
   stage.add(gridLayer)
 
   layer = new Konva.Layer()
@@ -106,7 +130,19 @@ const createStage = () => {
     }
 
     emit('zoom', nextZoom)
+    clampStagePosition()
+    requestGridRender()
     stage.batchDraw()
+  })
+
+  stage.on('dragmove', () => {
+    clampStagePosition()
+    requestGridRender()
+  })
+
+  stage.on('dragend', () => {
+    clampStagePosition()
+    requestGridRender()
   })
 }
 
@@ -167,11 +203,28 @@ const renderGrid = () => {
 
   gridLayer.destroyChildren()
 
-  const cols = Math.ceil(props.width / gridSpacing)
-  const rows = Math.ceil(props.height / gridSpacing)
+  const scale = stage ? stage.scaleX() : 1
+  const stagePos = stage ? stage.position() : { x: 0, y: 0 }
+  const { width, height } = getContainerSize()
 
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
+  const viewLeft = (-stagePos.x / scale) - gridSpacing * gridOverscan
+  const viewTop = (-stagePos.y / scale) - gridSpacing * gridOverscan
+  const viewRight = viewLeft + width / scale + gridSpacing * gridOverscan * 2
+  const viewBottom = viewTop + height / scale + gridSpacing * gridOverscan * 2
+
+  const colStart = Math.max(0, Math.floor(viewLeft / gridSpacing))
+  const rowStart = Math.max(0, Math.floor(viewTop / gridSpacing))
+  const colEnd = Math.min(
+    Math.ceil(props.width / gridSpacing),
+    Math.ceil(viewRight / gridSpacing)
+  )
+  const rowEnd = Math.min(
+    Math.ceil(props.height / gridSpacing),
+    Math.ceil(viewBottom / gridSpacing)
+  )
+
+  for (let row = rowStart; row < rowEnd; row += 1) {
+    for (let col = colStart; col < colEnd; col += 1) {
       const fill = gridColors[(row + col) % 2]
       gridLayer.add(
         new Konva.Rect({
@@ -185,7 +238,17 @@ const renderGrid = () => {
     }
   }
 
-  gridLayer.draw()
+  gridLayer.batchDraw()
+}
+
+const requestGridRender = () => {
+  if (gridRaf) {
+    return
+  }
+  gridRaf = window.requestAnimationFrame(() => {
+    gridRaf = 0
+    renderGrid()
+  })
 }
 
 onMounted(() => {
@@ -198,6 +261,7 @@ onMounted(() => {
 
   resizeObserver = new ResizeObserver(() => {
     applyStageSize()
+    requestGridRender()
   })
   resizeObserver.observe(containerRef.value)
 })
@@ -208,8 +272,9 @@ watch(
     if (stage) {
       stage.scale({ x: props.zoom, y: props.zoom })
       applyStageSize()
+      clampStagePosition()
     }
-    renderGrid()
+    requestGridRender()
     renderDevices()
   },
   { deep: true }
@@ -220,6 +285,10 @@ onBeforeUnmount(() => {
     resizeObserver.unobserve(containerRef.value)
     resizeObserver.disconnect()
     resizeObserver = null
+  }
+  if (gridRaf) {
+    window.cancelAnimationFrame(gridRaf)
+    gridRaf = 0
   }
   if (stage) {
     stage.destroy()
