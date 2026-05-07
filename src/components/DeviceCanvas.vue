@@ -36,11 +36,26 @@ let stage = null
 let layer = null
 let gridLayer = null
 let resizeObserver = null
-let gridRaf = 0
+let bgRect = null
 
 const gridSpacing = 100
 const gridColors = ['#f6f7fb', '#ffffff']
-const gridOverscan = 2
+
+const deviceNodes = new Map()
+
+const createGridPattern = () => {
+  const canvas = document.createElement('canvas')
+  canvas.width = gridSpacing * 2
+  canvas.height = gridSpacing * 2
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = gridColors[0]
+  ctx.fillRect(0, 0, gridSpacing, gridSpacing)
+  ctx.fillRect(gridSpacing, gridSpacing, gridSpacing, gridSpacing)
+  ctx.fillStyle = gridColors[1]
+  ctx.fillRect(gridSpacing, 0, gridSpacing, gridSpacing)
+  ctx.fillRect(0, gridSpacing, gridSpacing, gridSpacing)
+  return canvas
+}
 
 const getContainerSize = () => {
   if (!containerRef.value) {
@@ -131,18 +146,15 @@ const createStage = () => {
 
     emit('zoom', nextZoom)
     clampStagePosition()
-    requestGridRender()
     stage.batchDraw()
   })
 
   stage.on('dragmove', () => {
     clampStagePosition()
-    requestGridRender()
   })
 
   stage.on('dragend', () => {
     clampStagePosition()
-    requestGridRender()
   })
 }
 
@@ -151,49 +163,74 @@ const renderDevices = () => {
     return
   }
 
-  layer.destroyChildren()
   const overlapSet = new Set(props.overlapIds)
+  const currentIds = new Set()
 
   props.devices.forEach((device) => {
+    currentIds.add(device.id)
     const isSelected = device.id === props.selectedId
     const isOverlap = overlapSet.has(device.id)
     const fill = isOverlap ? '#ffb3b3' : isSelected ? '#ffd4a5' : '#9ec4ff'
     const stroke = isOverlap ? '#c81e1e' : isSelected ? '#e46c0a' : '#2a4b8d'
+    const strokeWidth = isSelected ? 3 : 2
 
-    const rect = new Konva.Rect({
-      x: device.x,
-      y: device.y,
+    let group = deviceNodes.get(device.id)
+    if (!group) {
+      group = new Konva.Group()
+
+      const rect = new Konva.Rect({
+        name: 'rect',
+        cornerRadius: 6,
+        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        shadowBlur: 8,
+        shadowOffset: { x: 2, y: 2 }
+      })
+
+      const label = new Konva.Text({
+        name: 'label',
+        fontSize: 16,
+        fontFamily: 'Space Grotesk, system-ui, sans-serif',
+        fontStyle: '600',
+        fill: '#0f1c3f',
+        align: 'center'
+      })
+
+      rect.on('click', () => emit('select', device.id))
+      label.on('click', () => emit('select', device.id))
+
+      group.add(rect)
+      group.add(label)
+      layer.add(group)
+      deviceNodes.set(device.id, group)
+    }
+
+    group.position({ x: device.x, y: device.y })
+
+    const rect = group.findOne('.rect')
+    rect.setAttrs({
       width: device.width,
       height: device.height,
       fill,
       stroke,
-      strokeWidth: isSelected ? 3 : 2,
-      cornerRadius: 6,
-      shadowColor: 'rgba(0, 0, 0, 0.15)',
-      shadowBlur: 8,
-      shadowOffset: { x: 2, y: 2 }
+      strokeWidth
     })
 
-    const label = new Konva.Text({
-      x: device.x,
-      y: device.y + device.height / 2 - 10,
+    const label = group.findOne('.label')
+    label.setAttrs({
+      y: device.height / 2 - 10,
       width: device.width,
-      text: device.id,
-      fontSize: 16,
-      fontFamily: 'Space Grotesk, system-ui, sans-serif',
-      fontStyle: '600',
-      fill: '#0f1c3f',
-      align: 'center'
+      text: device.id
     })
-
-    rect.on('click', () => emit('select', device.id))
-    label.on('click', () => emit('select', device.id))
-
-    layer.add(rect)
-    layer.add(label)
   })
 
-  layer.draw()
+  for (const [id, group] of deviceNodes.entries()) {
+    if (!currentIds.has(id)) {
+      group.destroy()
+      deviceNodes.delete(id)
+    }
+  }
+
+  layer.batchDraw()
 }
 
 const renderGrid = () => {
@@ -201,54 +238,22 @@ const renderGrid = () => {
     return
   }
 
-  gridLayer.destroyChildren()
-
-  const scale = stage ? stage.scaleX() : 1
-  const stagePos = stage ? stage.position() : { x: 0, y: 0 }
-  const { width, height } = getContainerSize()
-
-  const viewLeft = (-stagePos.x / scale) - gridSpacing * gridOverscan
-  const viewTop = (-stagePos.y / scale) - gridSpacing * gridOverscan
-  const viewRight = viewLeft + width / scale + gridSpacing * gridOverscan * 2
-  const viewBottom = viewTop + height / scale + gridSpacing * gridOverscan * 2
-
-  const colStart = Math.max(0, Math.floor(viewLeft / gridSpacing))
-  const rowStart = Math.max(0, Math.floor(viewTop / gridSpacing))
-  const colEnd = Math.min(
-    Math.ceil(props.width / gridSpacing),
-    Math.ceil(viewRight / gridSpacing)
-  )
-  const rowEnd = Math.min(
-    Math.ceil(props.height / gridSpacing),
-    Math.ceil(viewBottom / gridSpacing)
-  )
-
-  for (let row = rowStart; row < rowEnd; row += 1) {
-    for (let col = colStart; col < colEnd; col += 1) {
-      const fill = gridColors[(row + col) % 2]
-      gridLayer.add(
-        new Konva.Rect({
-          x: col * gridSpacing,
-          y: row * gridSpacing,
-          width: gridSpacing,
-          height: gridSpacing,
-          fill
-        })
-      )
-    }
+  if (!bgRect) {
+    bgRect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: props.width,
+      height: props.height,
+      fillPatternImage: createGridPattern(),
+      fillPatternRepeat: 'repeat'
+    })
+    gridLayer.add(bgRect)
+  } else {
+    bgRect.width(props.width)
+    bgRect.height(props.height)
   }
 
   gridLayer.batchDraw()
-}
-
-const requestGridRender = () => {
-  if (gridRaf) {
-    return
-  }
-  gridRaf = window.requestAnimationFrame(() => {
-    gridRaf = 0
-    renderGrid()
-  })
 }
 
 onMounted(() => {
@@ -257,27 +262,26 @@ onMounted(() => {
   }
   createStage()
   renderGrid()
-  renderDevices()
+  // Wait to let component mount
+  setTimeout(() => renderDevices(), 0)
 
   resizeObserver = new ResizeObserver(() => {
     applyStageSize()
-    requestGridRender()
   })
   resizeObserver.observe(containerRef.value)
 })
 
 watch(
-  () => [props.devices, props.selectedId, props.width, props.height, props.zoom],
+  () => [props.devices, props.selectedId, props.width, props.height, props.zoom, props.overlapIds],
   () => {
     if (stage) {
       stage.scale({ x: props.zoom, y: props.zoom })
       applyStageSize()
       clampStagePosition()
     }
-    requestGridRender()
+    renderGrid()
     renderDevices()
-  },
-  { deep: true }
+  }
 )
 
 onBeforeUnmount(() => {
@@ -285,10 +289,6 @@ onBeforeUnmount(() => {
     resizeObserver.unobserve(containerRef.value)
     resizeObserver.disconnect()
     resizeObserver = null
-  }
-  if (gridRaf) {
-    window.cancelAnimationFrame(gridRaf)
-    gridRaf = 0
   }
   if (stage) {
     stage.destroy()
