@@ -32,21 +32,66 @@ const selectedDevice = computed(() =>
 const existingIds = computed(() => devices.value.map((device) => device.id))
 
 const overlapIds = computed(() => {
-  const overlaps = new Set()
   const list = devices.value
+  // P4: 当设备数量较少时直接用 O(N²)，数量多时用空间哈希
+  if (list.length < 50) {
+    const overlaps = new Set()
+    for (let i = 0; i < list.length; i += 1) {
+      const a = list[i]
+      for (let j = i + 1; j < list.length; j += 1) {
+        const b = list[j]
+        const separated =
+          a.x + a.width <= b.x ||
+          b.x + b.width <= a.x ||
+          a.y + a.height <= b.y ||
+          b.y + b.height <= a.y
+        if (!separated) {
+          overlaps.add(a.id)
+          overlaps.add(b.id)
+        }
+      }
+    }
+    return Array.from(overlaps)
+  }
 
-  for (let i = 0; i < list.length; i += 1) {
-    const a = list[i]
-    for (let j = i + 1; j < list.length; j += 1) {
-      const b = list[j]
-      const separated =
-        a.x + a.width <= b.x ||
-        b.x + b.width <= a.x ||
-        a.y + a.height <= b.y ||
-        b.y + b.height <= a.y
-      if (!separated) {
-        overlaps.add(a.id)
-        overlaps.add(b.id)
+  // 空间哈希：O(N) 平均复杂度
+  const cellSize = 500
+  const grid = new Map()
+  for (let i = 0; i < list.length; i++) {
+    const d = list[i]
+    const cx0 = Math.floor(d.x / cellSize)
+    const cy0 = Math.floor(d.y / cellSize)
+    const cx1 = Math.floor((d.x + d.width) / cellSize)
+    const cy1 = Math.floor((d.y + d.height) / cellSize)
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const key = `${cx},${cy}`
+        if (!grid.has(key)) grid.set(key, [])
+        grid.get(key).push(i)
+      }
+    }
+  }
+
+  const overlaps = new Set()
+  const checked = new Set()
+  for (const [key, indices] of grid.entries()) {
+    for (let i = 0; i < indices.length; i++) {
+      for (let j = i + 1; j < indices.length; j++) {
+        const pairKey = indices[i] < indices[j] ? `${indices[i]}-${indices[j]}` : `${indices[j]}-${indices[i]}`
+        if (checked.has(pairKey)) continue
+        checked.add(pairKey)
+
+        const a = list[indices[i]]
+        const b = list[indices[j]]
+        const separated =
+          a.x + a.width <= b.x ||
+          b.x + b.width <= a.x ||
+          a.y + a.height <= b.y ||
+          b.y + b.height <= a.y
+        if (!separated) {
+          overlaps.add(a.id)
+          overlaps.add(b.id)
+        }
       }
     }
   }
