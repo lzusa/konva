@@ -37,15 +37,10 @@ let layer = null
 let gridLayer = null
 let resizeObserver = null
 let bgRect = null
-let zoomDebounceTimer = null
-
 const gridSpacing = 100
 const gridColors = ['#f6f7fb', '#ffffff']
 
 const deviceNodes = new Map()
-
-// 视口裁剪余量（设备宽高的余量比例）
-const VIEWPORT_MARGIN_RATIO = 0.3
 
 const createGridPattern = () => {
   const canvas = document.createElement('canvas')
@@ -220,34 +215,22 @@ const renderDevices = () => {
     if (!group) {
       group = new Konva.Group()
 
-      // P0: 移除 shadow，改用双层矩形模拟立体感
-      const outerRect = new Konva.Rect({
-        name: 'outerRect',
-        cornerRadius: 6,
-        fill: 'rgba(0, 0, 0, 0.1)',
-        offset: { x: 0, y: 0 }
-      })
-
+      // 单矩形 + 文本，无 shadow、无圆角、无额外层
       const rect = new Konva.Rect({
-        name: 'rect',
-        cornerRadius: 6,
-        // 不再使用 shadow，通过渐变和描边实现立体感
+        name: 'rect'
       })
 
       const label = new Konva.Text({
         name: 'label',
         fontSize: 16,
-        fontFamily: 'Space Grotesk, system-ui, sans-serif',
-        fontStyle: '600',
+        fontFamily: 'Arial, sans-serif',
         fill: '#0f1c3f',
         align: 'center',
-        listening: false  // P5: 禁用文本节点的 hit detection
+        listening: false
       })
 
-      // 点击事件只绑定在外层矩形上
-      outerRect.on('click', () => emit('select', device.id))
+      rect.on('click', () => emit('select', device.id))
 
-      group.add(outerRect)
       group.add(rect)
       group.add(label)
       layer.add(group)
@@ -256,23 +239,10 @@ const renderDevices = () => {
 
     group.position({ x: device.x, y: device.y })
 
-    const outerRect = group.findOne('.outerRect')
     const rect = group.findOne('.rect')
     const label = group.findOne('.label')
 
-    // 外层阴影矩形：偏移 2px
-    outerRect.setAttrs({
-      x: 2,
-      y: 2,
-      width: device.width,
-      height: device.height,
-      fill: 'rgba(0, 0, 0, 0.1)',
-    })
-
-    // 主矩形
     rect.setAttrs({
-      x: 0,
-      y: 0,
       width: device.width,
       height: device.height,
       fill,
@@ -367,12 +337,6 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  // 清理 zoom debounce timer
-  if (zoomDebounceTimer) {
-    clearTimeout(zoomDebounceTimer)
-    zoomDebounceTimer = null
-  }
-
   if (resizeObserver && containerRef.value) {
     resizeObserver.unobserve(containerRef.value)
     resizeObserver.disconnect()
