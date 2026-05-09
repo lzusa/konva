@@ -209,42 +209,6 @@ const createStage = () => {
   })
 }
 
-/**
- * P1 视口裁剪：只返回可视区域内的设备
- */
-const getVisibleDevices = () => {
-  if (!stage) return props.devices
-
-  const scale = stage.scaleX()
-  const stageX = stage.x()
-  const stageY = stage.y()
-  const stageW = stage.width()
-  const stageH = stage.height()
-
-  // 计算可视区域在世界坐标系中的范围
-  const viewLeft = -stageX / scale
-  const viewTop = -stageY / scale
-  const viewRight = (-stageX + stageW) / scale
-  const viewBottom = (-stageY + stageH) / scale
-
-  // 增加余量，避免滚动时闪烁
-  const margin = 300 / scale
-
-  const result = []
-  for (let i = 0; i < props.devices.length; i++) {
-    const d = props.devices[i]
-    if (
-      d.x + d.width > viewLeft - margin &&
-      d.x < viewRight + margin &&
-      d.y + d.height > viewTop - margin &&
-      d.y < viewBottom + margin
-    ) {
-      result.push(d)
-    }
-  }
-  return result
-}
-
 const renderDevices = () => {
   if (!layer) {
     return
@@ -252,11 +216,7 @@ const renderDevices = () => {
 
   const overlapSet = new Set(props.overlapIds)
 
-  // P1: 使用视口裁剪
-  const devicesToRender = getVisibleDevices()
-  const visibleIds = new Set(devicesToRender.map(d => d.id))
-
-  devicesToRender.forEach((device) => {
+  props.devices.forEach((device) => {
     const isSelected = device.id === props.selectedId
     const isOverlap = overlapSet.has(device.id)
     const fill = isOverlap ? '#ffb3b3' : isSelected ? '#ffd4a5' : '#9ec4ff'
@@ -312,21 +272,6 @@ const renderDevices = () => {
     })
   })
 
-  // 清理不在可视范围内的设备节点（从 stage 中移除但保留缓存引用）
-  for (const [id, group] of deviceNodes.entries()) {
-    if (!visibleIds.has(id)) {
-      // 从 layer 移除但保留在 deviceNodes 中，以便复用
-      if (group.parent) {
-        group.remove()
-      }
-    } else {
-      // 确保可视范围内的设备在 layer 中
-      if (!group.parent) {
-        layer.add(group)
-      }
-    }
-  }
-
   layer.batchDraw()
 }
 
@@ -380,12 +325,11 @@ watch(
 
 defineExpose({ autoFit })
 
-// P2: 将 zoom 变化分离出来，避免触发全量重绘
+// zoom 变化时只更新缩放
 watch(() => props.zoom, (newZoom) => {
   if (stage) {
     stage.scale({ x: newZoom, y: newZoom })
     clampStagePosition()
-    renderDevices()
   }
 })
 
