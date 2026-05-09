@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
 import DeviceCanvas from './components/DeviceCanvas.vue'
 import DeviceEditModal from './components/DeviceEditModal.vue'
 import DeviceForm from './components/DeviceForm.vue'
@@ -33,6 +33,12 @@ onMounted(async () => {
   } finally {
     devicesLoading.value = false
   }
+
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
 })
 
 const selectedId = ref(null)
@@ -171,6 +177,23 @@ const zoomOut = () => {
   setZoom(zoom.value - zoomStep)
 }
 
+const isFullscreen = ref(false)
+
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+  nextTick(() => {
+    if (canvasRef.value) {
+      canvasRef.value.autoFit()
+    }
+  })
+}
+
+const handleKeydown = (e) => {
+  if (e.key === 'Escape' && isFullscreen.value) {
+    toggleFullscreen()
+  }
+}
+
 const canvasRef = ref(null)
 
 const fitView = () => {
@@ -185,7 +208,7 @@ const resetZoom = () => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ 'page--fullscreen': isFullscreen }">
     <header class="page__header">
       <div>
         <p class="eyebrow">Semiconductor Floor Tools</p>
@@ -207,8 +230,8 @@ const resetZoom = () => {
       </div>
     </header>
 
-    <main class="page__main">
-      <section class="panel panel--form">
+    <main class="page__main" :class="{ 'page__main--fullscreen': isFullscreen }">
+      <section v-show="!isFullscreen" class="panel panel--form">
         <h2>Add Equipment</h2>
         <DeviceForm :existing-ids="existingIds" @add="addDevice" />
       </section>
@@ -234,6 +257,7 @@ const resetZoom = () => {
               <button class="icon-button" type="button" @click="zoomIn">+</button>
               <button class="icon-button" type="button" @click="resetZoom">Reset</button>
               <button class="icon-button" type="button" @click="fitView">Fit</button>
+              <button class="icon-button" type="button" @click="toggleFullscreen">{{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}</button>
               <span class="zoom__value">{{ Math.round(zoom * 100) }}%</span>
             </div>
           </div>
