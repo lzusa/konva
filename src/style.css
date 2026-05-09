@@ -111,6 +111,7 @@ p {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  width: 100%;
 }
 
 .page--fullscreen .panel--form {
@@ -122,6 +123,7 @@ p {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  width: 100%;
   padding: 8px 12px 12px;
   border-radius: 0;
 }
@@ -350,6 +352,7 @@ p {
   max-height: none;
   min-height: 0;
   height: 100%;
+  width: 100%;
 }
 
 .canvas__stage {
@@ -361,6 +364,7 @@ p {
 .page--fullscreen .canvas__stage {
   height: 100%;
   min-height: 0;
+  width: 100%;
 }
 
 /* ========== Modal 样式 ========== */
