@@ -50,6 +50,12 @@ const validate = () => {
   if (Number(form.width) <= 0 || Number(form.height) <= 0) {
     return 'Width and height must be greater than 0.'
   }
+  if (Number(form.x) + Number(form.width) > 800000) {
+    return 'Device exceeds canvas width (800000).'
+  }
+  if (Number(form.y) + Number(form.height) > 200000) {
+    return 'Device exceeds canvas height (200000).'
+  }
 
   return ''
 }

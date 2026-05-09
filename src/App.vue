@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import DeviceCanvas from './components/DeviceCanvas.vue'
 import DeviceEditModal from './components/DeviceEditModal.vue'
 import DeviceForm from './components/DeviceForm.vue'
@@ -11,6 +11,29 @@ const minZoom = 0.001
 const maxZoom = 1
 
 const devices = ref([])
+const devicesLoading = ref(true)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/output_eq.json')
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        devices.value = data.map((d) => ({
+          id: String(d.id),
+          x: Number(d.x),
+          y: Number(d.y),
+          width: Number(d.width),
+          height: Number(d.height)
+        }))
+      }
+    }
+  } catch {
+    // output_eq.json not available, start with empty devices
+  } finally {
+    devicesLoading.value = false
+  }
+})
 
 const selectedId = ref(null)
 const isEditOpen = ref(false)
@@ -171,7 +194,7 @@ const resetZoom = () => {
         </div>
         <div class="meta__item">
           <span class="meta__label">Devices</span>
-          <span class="meta__value">{{ devices.length }}</span>
+          <span class="meta__value">{{ devicesLoading ? '...' : devices.length }}</span>
         </div>
       </div>
     </header>
