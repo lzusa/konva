@@ -118,22 +118,22 @@ const save = () => {
         <div class="form__row">
           <label class="form__field">
             <span>X</span>
-            <input v-model.number="draft.x" type="number" min="0" />
+            <input v-model.number="draft.x" type="number" min="0" step="any" />
           </label>
           <label class="form__field">
             <span>Y</span>
-            <input v-model.number="draft.y" type="number" min="0" />
+            <input v-model.number="draft.y" type="number" min="0" step="any" />
           </label>
         </div>
 
         <div class="form__row">
           <label class="form__field">
             <span>Width</span>
-            <input v-model.number="draft.width" type="number" min="1" />
+            <input v-model.number="draft.width" type="number" min="0.1" step="any" />
           </label>
           <label class="form__field">
             <span>Height</span>
-            <input v-model.number="draft.height" type="number" min="1" />
+            <input v-model.number="draft.height" type="number" min="0.1" step="any" />
           </label>
         </div>
 

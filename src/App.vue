@@ -4,23 +4,11 @@ import DeviceCanvas from './components/DeviceCanvas.vue'
 import DeviceEditModal from './components/DeviceEditModal.vue'
 import DeviceForm from './components/DeviceForm.vue'
 
-const canvasSize = { width: 12000, height: 8000 }
-const zoom = ref(0.4)
-const zoomStep = 0.1
-const minZoom = 0.1
-const maxZoom = Math.min(2, 16000 / canvasSize.width, 16000 / canvasSize.height)
-
-const devices = ref([
-  { id: 'EQ-1001', x: 80, y: 60, width: 180, height: 120 },
-  { id: 'EQ-1002', x: 80, y: 260, width: 220, height: 140 },
-  { id: 'EQ-1003', x: 80, y: 500, width: 200, height: 160 },
-  { id: 'EQ-2001', x: 400, y: 60, width: 160, height: 160 },
-  { id: 'EQ-2002', x: 400, y: 260, width: 240, height: 120 },
-  { id: 'EQ-2003', x: 400, y: 500, width: 180, height: 140 },
-
-  { id: 'EQ-3001', x: 720, y: 60, width: 200, height: 100 },
-  { id: 'EQ-3002', x: 720, y: 200, width: 180, height: 180 },
-])
+const canvasSize = { width: 800000, height: 200000 }
+const zoom = ref(0.01)
+const zoomStep = 0.01
+const minZoom = 0.001
+const maxZoom = 1
 
 const selectedId = ref(null)
 const isEditOpen = ref(false)
@@ -196,7 +184,7 @@ const resetZoom = () => {
         <div class="panel__header">
           <h2>Layout Canvas</h2>
           <div class="panel__controls">
-            <p class="hint">Origin is top-left. Click a rectangle to edit.</p>
+            <p class="hint">Origin is bottom-left. X → right, Y ↑ up. Click a rectangle to edit.</p>
             <p v-if="hasOverlap" class="warning-banner">
               Overlap detected: {{ overlapIds.join(', ') }}
             </p>

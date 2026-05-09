@@ -14,8 +14,8 @@ const form = reactive({
   id: '',
   x: 0,
   y: 0,
-  width: 120,
-  height: 80
+  width: 5000,
+  height: 3000
 })
 
 const error = ref('')
@@ -24,8 +24,8 @@ const resetForm = () => {
   form.id = ''
   form.x = 0
   form.y = 0
-  form.width = 120
-  form.height = 80
+  form.width = 5000
+  form.height = 3000
 }
 
 const validate = () => {
@@ -83,22 +83,22 @@ const submit = () => {
     <div class="form__row">
       <label class="form__field">
         <span>X</span>
-        <input v-model.number="form.x" type="number" min="0" />
+        <input v-model.number="form.x" type="number" min="0" step="any" placeholder="如 1000.5" />
       </label>
       <label class="form__field">
         <span>Y</span>
-        <input v-model.number="form.y" type="number" min="0" />
+        <input v-model.number="form.y" type="number" min="0" step="any" placeholder="如 500.25" />
       </label>
     </div>
 
     <div class="form__row">
       <label class="form__field">
         <span>Width</span>
-        <input v-model.number="form.width" type="number" min="1" />
+        <input v-model.number="form.width" type="number" min="0.1" step="any" placeholder="如 5000.5" />
       </label>
       <label class="form__field">
         <span>Height</span>
-        <input v-model.number="form.height" type="number" min="1" />
+        <input v-model.number="form.height" type="number" min="0.1" step="any" placeholder="如 3000.25" />
       </label>
     </div>
 

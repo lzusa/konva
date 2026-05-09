@@ -40,6 +40,14 @@ let bgRect = null
 const gridSpacing = 100
 const gridColors = ['#f6f7fb', '#ffffff']
 
+/**
+ * 将用户坐标系（左下角原点，Y向上）转换为 Konva 屏幕坐标（左上角原点，Y向下）
+ * @param {number} userY - 用户坐标的 Y 值（距离底部的距离）
+ * @param {number} height - 设备高度
+ * @returns {number} Konva 坐标系的 Y 值
+ */
+const toKonvaY = (userY, height) => props.height - userY - height
+
 const deviceNodes = new Map()
 
 const createGridPattern = () => {
@@ -89,11 +97,14 @@ const clampStagePosition = () => {
   const worldWidth = props.width * scale
   const worldHeight = props.height * scale
 
+  // 左下角原点坐标系：原点在屏幕左下，Y向上
+  // stage.y 表示原点在屏幕上的位置，负值表示在可视区域上方
   const minX = Math.min(0, viewWidth - worldWidth)
+  const maxY = 0  // 原点在底部，不能下移
   const minY = Math.min(0, viewHeight - worldHeight)
 
   const clampedX = Math.min(0, Math.max(minX, stage.x()))
-  const clampedY = Math.min(0, Math.max(minY, stage.y()))
+  const clampedY = Math.max(minY, Math.min(maxY, stage.y()))
 
   if (clampedX !== stage.x() || clampedY !== stage.y()) {
     stage.position({ x: clampedX, y: clampedY })
@@ -237,7 +248,7 @@ const renderDevices = () => {
       deviceNodes.set(device.id, group)
     }
 
-    group.position({ x: device.x, y: device.y })
+    group.position({ x: device.x, y: toKonvaY(device.y, device.height) })
 
     const rect = group.findOne('.rect')
     const label = group.findOne('.label')
