@@ -311,6 +311,10 @@ onMounted(() => {
 
   resizeObserver = new ResizeObserver(() => {
     applyStageSize()
+    // 尺寸变化较大时重新自适应视图
+    if (props.devices.length > 0) {
+      autoFit()
+    }
   })
   resizeObserver.observe(containerRef.value)
 })

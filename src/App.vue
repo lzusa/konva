@@ -181,11 +181,12 @@ const isFullscreen = ref(false)
 
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value
-  nextTick(() => {
+  // 等待布局完成和 ResizeObserver 触发后再自适应
+  setTimeout(() => {
     if (canvasRef.value) {
       canvasRef.value.autoFit()
     }
-  })
+  }, 100)
 }
 
 const handleKeydown = (e) => {
