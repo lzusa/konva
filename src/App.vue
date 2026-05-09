@@ -182,6 +182,13 @@ const isFullscreen = ref(false)
 const toggleFullscreen = async () => {
   isFullscreen.value = !isFullscreen.value
 
+  // 同步更新 body class（比 CSS :has() 更可靠）
+  if (isFullscreen.value) {
+    document.body.classList.add('is-fullscreen')
+  } else {
+    document.body.classList.remove('is-fullscreen')
+  }
+
   // 等待 DOM 更新 + CSS 过渡完成 + 浏览器布局计算
   await new Promise(resolve => setTimeout(resolve, 150))
 
