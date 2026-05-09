@@ -179,14 +179,21 @@ const zoomOut = () => {
 
 const isFullscreen = ref(false)
 
-const toggleFullscreen = () => {
+const toggleFullscreen = async () => {
   isFullscreen.value = !isFullscreen.value
-  // 等待布局完成和 ResizeObserver 触发后再自适应
-  setTimeout(() => {
-    if (canvasRef.value) {
-      canvasRef.value.autoFit()
-    }
-  }, 100)
+
+  // 等待 DOM 更新 + CSS 过渡完成 + 浏览器布局计算
+  await new Promise(resolve => setTimeout(resolve, 150))
+
+  // 触发 resize 事件让 DeviceCanvas 重新计算尺寸
+  window.dispatchEvent(new Event('resize'))
+
+  // 再等待一帧确保 ResizeObserver 已触发
+  await new Promise(resolve => requestAnimationFrame(resolve))
+
+  if (canvasRef.value) {
+    canvasRef.value.autoFit()
+  }
 }
 
 const handleKeydown = (e) => {

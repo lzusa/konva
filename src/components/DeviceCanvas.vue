@@ -118,8 +118,16 @@ const clampStagePosition = () => {
 const autoFit = () => {
   if (!stage || props.devices.length === 0) return
 
+  // 强制浏览器重新计算布局
+  if (containerRef.value) {
+    void containerRef.value.offsetHeight
+  }
+
   const containerSize = getContainerSize()
-  if (containerSize.width === 0 || containerSize.height === 0) return
+  if (containerSize.width === 0 || containerSize.height === 0) {
+    console.warn('Container size is zero, skipping autoFit')
+    return
+  }
 
   // 计算所有设备的包围盒
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
@@ -301,6 +309,21 @@ const renderGrid = () => {
   gridLayer.batchDraw()
 }
 
+let resizeTimeout = null
+
+const handleWindowResize = () => {
+  // 防抖处理
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = setTimeout(() => {
+    applyStageSize()
+    if (stage) {
+      stage.batchDraw()
+    }
+  }, 100)
+}
+
 onMounted(() => {
   if (!containerRef.value) {
     return
@@ -309,14 +332,18 @@ onMounted(() => {
   renderGrid()
   setTimeout(() => renderDevices(), 0)
 
+  // ResizeObserver 只负责更新 stage 尺寸，不自动调用 autoFit
+  // autoFit 由父组件在适当时机调用
   resizeObserver = new ResizeObserver(() => {
     applyStageSize()
-    // 尺寸变化较大时重新自适应视图
-    if (props.devices.length > 0) {
-      autoFit()
+    if (stage) {
+      stage.batchDraw()
     }
   })
   resizeObserver.observe(containerRef.value)
+
+  // 监听窗口 resize 事件
+  window.addEventListener('resize', handleWindowResize)
 })
 
 // 设备数据变化时自适应画布
@@ -354,6 +381,12 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+    resizeTimeout = null
+  }
+  window.removeEventListener('resize', handleWindowResize)
+
   if (resizeObserver && containerRef.value) {
     resizeObserver.unobserve(containerRef.value)
     resizeObserver.disconnect()
