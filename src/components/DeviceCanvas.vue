@@ -48,7 +48,7 @@ const gridColors = ['#f6f7fb', '#ffffff']
  */
 const toKonvaY = (userY, height) => props.height - userY - height
 
-const deviceNodes = new Map()
+const deviceNodes = new Map() // id -> { group, rect, label }
 
 const createGridPattern = () => {
   const canvas = document.createElement('canvas')
@@ -223,18 +223,12 @@ const renderDevices = () => {
     const stroke = isOverlap ? '#c81e1e' : isSelected ? '#e46c0a' : '#2a4b8d'
     const strokeWidth = isSelected ? 3 : 2
 
-    let group = deviceNodes.get(device.id)
-    if (!group) {
-      group = new Konva.Group()
+    let cached = deviceNodes.get(device.id)
+    if (!cached) {
+      const group = new Konva.Group()
 
-      // 单矩形 + 文本，无 shadow、无圆角、无额外层
-      const rect = new Konva.Rect({
-        name: 'rect'
-      })
-
+      const rect = new Konva.Rect()
       const label = new Konva.Text({
-        name: 'label',
-        fontSize: 12,
         fontFamily: 'Arial, sans-serif',
         fill: '#0f1c3f',
         align: 'center',
@@ -246,15 +240,13 @@ const renderDevices = () => {
       group.add(rect)
       group.add(label)
       layer.add(group)
-      deviceNodes.set(device.id, group)
+      cached = { group, rect, label }
+      deviceNodes.set(device.id, cached)
     }
 
-    group.position({ x: device.x, y: toKonvaY(device.y, device.height) })
+    cached.group.position({ x: device.x, y: toKonvaY(device.y, device.height) })
 
-    const rect = group.findOne('.rect')
-    const label = group.findOne('.label')
-
-    rect.setAttrs({
+    cached.rect.setAttrs({
       width: device.width,
       height: device.height,
       fill,
@@ -262,8 +254,8 @@ const renderDevices = () => {
       strokeWidth
     })
 
-    const fontSize = Math.max(12, Math.min(device.width, device.height) / 3)
-    label.setAttrs({
+    const fontSize = Math.max(12, device.width / 7)
+    cached.label.setAttrs({
       y: device.height / 2 - fontSize / 2,
       width: device.width,
       height: fontSize,
@@ -271,6 +263,17 @@ const renderDevices = () => {
       text: device.id
     })
   })
+
+  // 清理已删除设备的 group（防止残留在 layer 中）
+  const currentIds = new Set(props.devices.map(d => d.id))
+  for (const [id, cached] of deviceNodes.entries()) {
+    if (!currentIds.has(id)) {
+      if (cached.group.parent) {
+        cached.group.destroy()
+      }
+      deviceNodes.delete(id)
+    }
+  }
 
   layer.batchDraw()
 }
