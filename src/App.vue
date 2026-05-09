@@ -10,6 +10,8 @@ const zoomStep = 0.01
 const minZoom = 0.001
 const maxZoom = 1
 
+const devices = ref([])
+
 const selectedId = ref(null)
 const isEditOpen = ref(false)
 
