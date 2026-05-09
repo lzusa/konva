@@ -29,7 +29,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['select', 'zoom'])
+const emit = defineEmits(['select', 'zoom', 'fit'])
 
 const containerRef = ref(null)
 let stage = null
@@ -109,6 +109,47 @@ const clampStagePosition = () => {
   if (clampedX !== stage.x() || clampedY !== stage.y()) {
     stage.position({ x: clampedX, y: clampedY })
   }
+}
+
+/**
+ * 自适应画布：根据设备范围计算最佳缩放和位置
+ * 使所有设备可见，且画布原点（左下角）对准设备区域左下角
+ */
+const autoFit = () => {
+  if (!stage || props.devices.length === 0) return
+
+  const containerSize = getContainerSize()
+  if (containerSize.width === 0 || containerSize.height === 0) return
+
+  // 计算所有设备的包围盒
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const d of props.devices) {
+    minX = Math.min(minX, d.x)
+    minY = Math.min(minY, d.y)
+    maxX = Math.max(maxX, d.x + d.width)
+    maxY = Math.max(maxY, d.y + d.height)
+  }
+
+  const padding = 200
+  const boundsWidth = maxX - minX + padding * 2
+  const boundsHeight = maxY - minY + padding * 2
+
+  // 计算最佳缩放
+  const fitZoom = Math.min(
+    containerSize.width / boundsWidth,
+    containerSize.height / boundsHeight,
+    1
+  )
+
+  stage.scale({ x: fitZoom, y: fitZoom })
+
+  // 定位画布：使设备区域左下角在视口左下可见
+  const targetX = -(minX - padding) * fitZoom
+  const targetY = -(maxY + padding) * fitZoom
+  stage.position({ x: targetX, y: targetY })
+
+  emit('zoom', fitZoom)
+  stage.batchDraw()
 }
 
 const createStage = () => {
@@ -233,7 +274,7 @@ const renderDevices = () => {
 
       const label = new Konva.Text({
         name: 'label',
-        fontSize: 16,
+        fontSize: 12,
         fontFamily: 'Arial, sans-serif',
         fill: '#0f1c3f',
         align: 'center',
@@ -261,9 +302,12 @@ const renderDevices = () => {
       strokeWidth
     })
 
+    const fontSize = Math.max(12, Math.min(device.width, device.height) / 3)
     label.setAttrs({
-      y: device.height / 2 - 10,
+      y: device.height / 2 - fontSize / 2,
       width: device.width,
+      height: fontSize,
+      fontSize,
       text: device.id
     })
   })
@@ -315,7 +359,6 @@ onMounted(() => {
   }
   createStage()
   renderGrid()
-  // Wait to let component mount
   setTimeout(() => renderDevices(), 0)
 
   resizeObserver = new ResizeObserver(() => {
@@ -324,12 +367,24 @@ onMounted(() => {
   resizeObserver.observe(containerRef.value)
 })
 
+// 设备数据变化时自适应画布
+watch(
+  () => props.devices,
+  (newDevices) => {
+    if (stage && newDevices && newDevices.length > 0) {
+      setTimeout(() => autoFit(), 50)
+    }
+  },
+  { deep: true }
+)
+
+defineExpose({ autoFit })
+
 // P2: 将 zoom 变化分离出来，避免触发全量重绘
 watch(() => props.zoom, (newZoom) => {
   if (stage) {
     stage.scale({ x: newZoom, y: newZoom })
     clampStagePosition()
-    // 不调用 renderDevices()，只重新计算视口内可见设备
     renderDevices()
   }
 })

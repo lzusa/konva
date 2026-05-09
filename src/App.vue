@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import DeviceCanvas from './components/DeviceCanvas.vue'
 import DeviceEditModal from './components/DeviceEditModal.vue'
 import DeviceForm from './components/DeviceForm.vue'
@@ -171,8 +171,16 @@ const zoomOut = () => {
   setZoom(zoom.value - zoomStep)
 }
 
+const canvasRef = ref(null)
+
+const fitView = () => {
+  if (canvasRef.value && devices.value.length > 0) {
+    canvasRef.value.autoFit()
+  }
+}
+
 const resetZoom = () => {
-  setZoom(0.4)
+  setZoom(0.01)
 }
 </script>
 
@@ -219,17 +227,19 @@ const resetZoom = () => {
                 v-model.number="zoom"
                 class="zoom__range"
                 type="range"
-                min="0.1"
+                :min="minZoom"
                 :max="maxZoom"
-                step="0.05"
+                :step="zoomStep"
               />
               <button class="icon-button" type="button" @click="zoomIn">+</button>
               <button class="icon-button" type="button" @click="resetZoom">Reset</button>
+              <button class="icon-button" type="button" @click="fitView">Fit</button>
               <span class="zoom__value">{{ Math.round(zoom * 100) }}%</span>
             </div>
           </div>
         </div>
         <DeviceCanvas
+          ref="canvasRef"
           :devices="devices"
           :selected-id="selectedId"
           :width="canvasSize.width"
