@@ -20,11 +20,12 @@ onMounted(async () => {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
         devices.value = data.map((d) => ({
-          id: String(d.id),
+          id: String(d.id || d.id || ''),
           x: Number(d.x),
           y: Number(d.y),
           width: Number(d.width),
-          height: Number(d.height)
+          height: Number(d.height),
+          info: d.info || null
         }))
       }
     }

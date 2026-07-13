@@ -144,6 +144,21 @@ const save = () => {
         </div>
 
         <p v-if="error" class="form__error">{{ error }}</p>
+
+        <!-- 只读信息区 -->
+        <div v-if="device && device.info" class="info-section">
+          <h4 class="info-section__title">Macro Info</h4>
+          <div class="info-section__grid">
+            <div
+              v-for="(value, key) in device.info"
+              :key="key"
+              class="info-section__item"
+            >
+              <span class="info-section__label">{{ key }}</span>
+              <span class="info-section__value">{{ value }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <footer class="modal__footer">

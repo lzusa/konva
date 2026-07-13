@@ -35,6 +35,9 @@ const containerRef = ref(null)
 let stage = null
 let layer = null
 let gridLayer = null
+let tooltipLayer = null
+let tooltipRect = null
+let tooltipText = null
 let resizeObserver = null
 let bgRect = null
 const gridSpacing = 100
@@ -111,6 +114,54 @@ const clampStagePosition = () => {
   }
 }
 
+/** 显示设备信息工具提示 */
+const _showTooltip = (device, rect) => {
+  if (!tooltipRect || !tooltipText || !stage) return
+
+  const info = device.info
+  if (!info) return
+
+  // 构建信息文本
+  const lines = ['📋 Info']
+  for (const [key, value] of Object.entries(info)) {
+    if (value !== null && value !== undefined && value !== '') {
+      let label = key
+      // 让中文键名更友好
+      if (key === 'area') label = 'Area'
+      else if (key === 'bay_occupation') label = 'Bay'
+      else if (key === 'direction_flag') label = 'Direction'
+      lines.push(`${label}: ${value}`)
+    }
+  }
+  const text = lines.join('\n')
+
+  tooltipText.text(text)
+  const tw = tooltipText.width()
+  const th = tooltipText.height()
+
+  // 计算屏幕位置：在矩形上方居中
+  const rectAbs = rect.getAbsolutePosition()
+  const scale = stage.scaleX()
+  const tooltipX = rectAbs.x + (rect.width() * scale - tw) / 2
+  const tooltipY = rectAbs.y - th - 8 * scale
+
+  tooltipText.position({ x: tooltipX, y: tooltipY })
+  tooltipRect.position({ x: tooltipX, y: tooltipY })
+  tooltipRect.size({ width: tw, height: th })
+
+  tooltipRect.visible(true)
+  tooltipText.visible(true)
+  tooltipLayer.batchDraw()
+}
+
+/** 隐藏工具提示 */
+const _hideTooltip = () => {
+  if (!tooltipRect || !tooltipText) return
+  tooltipRect.visible(false)
+  tooltipText.visible(false)
+  if (tooltipLayer) tooltipLayer.batchDraw()
+}
+
 /**
  * 自适应画布：根据设备范围计算最佳缩放和位置
  * 使所有设备可见，且画布原点（左下角）对准设备区域左下角
@@ -177,6 +228,28 @@ const createStage = () => {
   layer = new Konva.Layer()
   stage.add(layer)
 
+  // 工具提示层
+  tooltipLayer = new Konva.Layer()
+  tooltipRect = new Konva.Rect({
+    visible: false,
+    fill: '#0f1c3f',
+    cornerRadius: 4,
+    opacity: 0.9,
+    listening: false
+  })
+  tooltipText = new Konva.Text({
+    visible: false,
+    fontFamily: 'Arial, sans-serif',
+    fontSize: 13,
+    fill: '#ffffff',
+    padding: 10,
+    lineHeight: 1.5,
+    listening: false
+  })
+  tooltipLayer.add(tooltipRect)
+  tooltipLayer.add(tooltipText)
+  stage.add(tooltipLayer)
+
   stage.on('click', (event) => {
     if (event.target === stage) {
       emit('select', null)
@@ -185,6 +258,7 @@ const createStage = () => {
 
   stage.on('wheel', (event) => {
     event.evt.preventDefault()
+    _hideTooltip()
     const delta = event.evt.deltaY
     const oldScale = stage.scaleX()
     const scaleBy = 1.05
@@ -245,12 +319,24 @@ const renderDevices = () => {
 
       rect.on('click', () => emit('select', device.id))
 
+      rect.on('mouseenter', () => {
+        if (device.info) {
+          _showTooltip(device, rect)
+        }
+      })
+      rect.on('mouseleave', () => {
+        _hideTooltip()
+      })
+
       group.add(rect)
       group.add(label)
       layer.add(group)
       cached = { group, rect, label }
       deviceNodes.set(device.id, cached)
     }
+
+    // 更新缓存中的 info，供 tooltip 使用
+    cached._info = device.info
 
     cached.group.position({ x: device.x, y: toKonvaY(device.y, device.height) })
 

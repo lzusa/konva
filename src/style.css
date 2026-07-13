@@ -446,3 +446,50 @@ p {
     justify-content: flex-start;
   }
 }
+
+/* ========== Info 信息区 ========== */
+.info-section {
+  margin-top: 8px;
+  padding: 14px;
+  background: #f4f6fa;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 24, 38, 0.08);
+}
+
+.info-section__title {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #5a6577;
+}
+
+.info-section__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-section__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.info-section__label {
+  color: #5a6577;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.info-section__value {
+  font-weight: 500;
+  color: #101826;
+}
