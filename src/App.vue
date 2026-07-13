@@ -4,7 +4,8 @@ import DeviceCanvas from './components/DeviceCanvas.vue'
 import DeviceEditModal from './components/DeviceEditModal.vue'
 import DeviceForm from './components/DeviceForm.vue'
 
-const canvasSize = { width: 800000, height: 200000 }
+const PADDING = 2000
+const canvasBounds = ref({ minX: 0, minY: 0, width: 800000, height: 200000 })
 const zoom = ref(0.01)
 const zoomStep = 0.01
 const minZoom = 0.001
@@ -13,19 +14,61 @@ const maxZoom = 1
 const devices = ref([])
 const devicesLoading = ref(true)
 
+/** 从数据计算画布边界（兼容负坐标） */
+const computeBounds = (data) => {
+  if (!data || data.length === 0) {
+    return { minX: 0, minY: 0, width: 800000, height: 200000 }
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const d of data) {
+    const x = Number(d.x)
+    const y = Number(d.y)
+    const w = Number(d.width) || 0
+    const h = Number(d.height) || 0
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x + w > maxX) maxX = x + w
+    if (y + h > maxY) maxY = y + h
+  }
+  // 给边界留 padding
+  return {
+    minX: minX - PADDING,
+    minY: minY - PADDING,
+    width: (maxX - minX) + PADDING * 2,
+    height: (maxY - minY) + PADDING * 2,
+  }
+}
+
+/** 生成 fallback id（macro layout 可能没有 id 字段） */
+const makeId = (d, idx) => {
+  if (d.id && String(d.id).trim()) return String(d.id).trim()
+  // 从 info 里取 bay_occupation 或 文字 作为 id
+  const info = d.info || {}
+  if (info.bay_occupation && String(info.bay_occupation).trim()) {
+    return String(info.bay_occupation).trim()
+  }
+  if (info.文字 && String(info.文字).trim()) {
+    return String(info.文字).trim()
+  }
+  return `M-${idx + 1}`
+}
+
 onMounted(async () => {
   try {
     const res = await fetch('/output_eq.json')
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
-        devices.value = data.map((d) => ({
-          id: String(d.id || d.id || ''),
+        // 先算边界（依赖原始坐标）
+        canvasBounds.value = computeBounds(data)
+
+        devices.value = data.map((d, i) => ({
+          id: makeId(d, i),
           x: Number(d.x),
           y: Number(d.y),
           width: Number(d.width),
           height: Number(d.height),
-          info: d.info || null
+          info: d.info || null,
         }))
       }
     }
@@ -237,7 +280,7 @@ const resetZoom = () => {
       <div class="meta">
         <div class="meta__item">
           <span class="meta__label">Canvas</span>
-          <span class="meta__value">{{ canvasSize.width }} x {{ canvasSize.height }}</span>
+          <span class="meta__value">{{ canvasBounds.width.toFixed(0) }} x {{ canvasBounds.height.toFixed(0) }}</span>
         </div>
         <div class="meta__item">
           <span class="meta__label">Devices</span>
@@ -282,8 +325,10 @@ const resetZoom = () => {
           ref="canvasRef"
           :devices="devices"
           :selected-id="selectedId"
-          :width="canvasSize.width"
-          :height="canvasSize.height"
+          :min-x="canvasBounds.minX"
+          :min-y="canvasBounds.minY"
+          :width="canvasBounds.width"
+          :height="canvasBounds.height"
           :zoom="zoom"
           :overlap-ids="overlapIds"
           @select="openEdit"

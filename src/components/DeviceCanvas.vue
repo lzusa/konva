@@ -11,6 +11,14 @@ const props = defineProps({
     type: String,
     default: null
   },
+  minX: {
+    type: Number,
+    default: 0
+  },
+  minY: {
+    type: Number,
+    default: 0
+  },
   width: {
     type: Number,
     default: 1200
@@ -45,11 +53,12 @@ const gridColors = ['#f6f7fb', '#ffffff']
 
 /**
  * 将用户坐标系（左下角原点，Y向上）转换为 Konva 屏幕坐标（左上角原点，Y向下）
+ * 支持负坐标：整体偏移 minX/minY，使最小坐标落在画布左下角
  * @param {number} userY - 用户坐标的 Y 值（距离底部的距离）
  * @param {number} height - 设备高度
  * @returns {number} Konva 坐标系的 Y 值
  */
-const toKonvaY = (userY, height) => props.height - userY - height
+const toKonvaY = (userY, height) => (props.height + props.minY) - userY - height
 
 const deviceNodes = new Map() // id -> { group, rect, label }
 
@@ -180,31 +189,37 @@ const autoFit = () => {
     return
   }
 
-  // 计算所有设备的包围盒
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  // 计算所有设备在 Konva 空间中的包围盒（已含偏移）
+  let kMinX = Infinity, kMinY = Infinity
+  let kMaxX = -Infinity, kMaxY = -Infinity
+  const offX = props.minX
+  const baseY = props.height + props.minY
+
   for (const d of props.devices) {
-    minX = Math.min(minX, d.x)
-    minY = Math.min(minY, d.y)
-    maxX = Math.max(maxX, d.x + d.width)
-    maxY = Math.max(maxY, d.y + d.height)
+    const kx = d.x - offX
+    const ky = baseY - d.y - d.height  // rect 左上角 Konva Y
+    if (kx < kMinX) kMinX = kx
+    if (ky < kMinY) kMinY = ky
+    if (kx + d.width > kMaxX) kMaxX = kx + d.width
+    if (ky + d.height > kMaxY) kMaxY = ky + d.height
   }
 
   const padding = 200
-  const boundsWidth = maxX - minX + padding * 2
-  const boundsHeight = maxY - minY + padding * 2
+  const boundsWidth = kMaxX - kMinX + padding * 2
+  const boundsHeight = kMaxY - kMinY + padding * 2
 
   // 计算最佳缩放
   const fitZoom = Math.min(
-    containerSize.width / boundsWidth,
-    containerSize.height / boundsHeight,
+    containerSize.width / Math.max(boundsWidth, 1),
+    containerSize.height / Math.max(boundsHeight, 1),
     1
   )
 
   stage.scale({ x: fitZoom, y: fitZoom })
 
-  // 定位画布：使设备区域左下角在视口左下可见
-  const targetX = -(minX - padding) * fitZoom
-  const targetY = -(maxY + padding) * fitZoom
+  // 居中显示
+  const targetX = (containerSize.width - (kMinX + kMaxX) * fitZoom) / 2
+  const targetY = (containerSize.height - (kMinY + kMaxY) * fitZoom) / 2
   stage.position({ x: targetX, y: targetY })
 
   emit('zoom', fitZoom)
@@ -338,7 +353,7 @@ const renderDevices = () => {
     // 更新缓存中的 info，供 tooltip 使用
     cached._info = device.info
 
-    cached.group.position({ x: device.x, y: toKonvaY(device.y, device.height) })
+    cached.group.position({ x: device.x - props.minX, y: toKonvaY(device.y, device.height) })
 
     cached.rect.setAttrs({
       width: device.width,
