@@ -356,13 +356,21 @@ const renderDevices = () => {
       strokeWidth
     })
 
-    const fontSize = Math.max(12, device.width / 7)
+    const fontSize = Math.max(10, device.width / 9)
+    // 三行显示：direction_flag / 文字 / bay_occupation
+    const info = device.info || {}
+    const line1 = info.direction_flag || ''
+    const line2 = info.文字 || ''
+    const line3 = info.bay_occupation || ''
+    const displayText = [line1, line2, line3].filter(Boolean).join('\n')
+    const lineCount = [line1, line2, line3].filter(Boolean).length
+
     cached.label.setAttrs({
-      y: device.height / 2 - fontSize / 2,
+      y: device.height / 2 - (fontSize * lineCount) / 2,
       width: device.width,
-      height: fontSize,
+      height: fontSize * lineCount,
       fontSize,
-      text: device.id
+      text: displayText
     })
   })
 

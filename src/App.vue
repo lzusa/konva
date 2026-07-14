@@ -39,17 +39,15 @@ const computeBounds = (data) => {
   }
 }
 
-/** 生成 id — macro layout 用 direction_flag - 文字 格式 */
+/** 生成 id — direction_flag-文字-bay_occupation 连字符格式 */
 const makeId = (d, idx) => {
   if (d.id && String(d.id).trim()) return String(d.id).trim()
-  // macro layout：direction_flag - 文字
   const info = d.info || {}
   const dir = info.direction_flag ? String(info.direction_flag).trim() : ''
   const label = info.文字 ? String(info.文字).trim() : ''
-  if (dir && label) return `${dir} - ${label}`
-  if (dir) return dir
-  if (label) return label
-  return `M-${idx + 1}`
+  const bay = info.bay_occupation ? String(info.bay_occupation).trim() : ''
+  const parts = [dir, label, bay].filter(Boolean)
+  return parts.length > 0 ? parts.join('-') : `M-${idx + 1}`
 }
 
 onMounted(async () => {
