@@ -18,6 +18,16 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save', 'delete'])
 
+/** 格式化 info 值（处理 LP 坐标等对象类型） */
+const formatInfoVal = (value) => {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') {
+    if ('x' in value && 'y' in value) return `x=${value.x}, y=${value.y}`
+    return JSON.stringify(value)
+  }
+  return String(value)
+}
+
 const draft = reactive({
   id: '',
   x: 0,
@@ -147,7 +157,7 @@ const save = () => {
 
         <!-- 只读信息区 -->
         <div v-if="device && device.info" class="info-section">
-          <h4 class="info-section__title">Macro Info</h4>
+          <h4 class="info-section__title">{{ device._isDetail ? 'Detail Info' : 'Macro Info' }}</h4>
           <div class="info-section__grid">
             <div
               v-for="(value, key) in device.info"
@@ -155,7 +165,7 @@ const save = () => {
               class="info-section__item"
             >
               <span class="info-section__label">{{ key }}</span>
-              <span class="info-section__value">{{ value }}</span>
+              <span class="info-section__value">{{ formatInfoVal(value) }}</span>
             </div>
           </div>
         </div>

@@ -66,6 +66,7 @@ onMounted(async () => {
           width: Number(d.width),
           height: Number(d.height),
           info: d.info || null,
+          _isDetail: !!(d.id && String(d.id).trim()),
         }))
       }
     }

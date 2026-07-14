@@ -119,6 +119,16 @@ const clampStagePosition = () => {
   }
 }
 
+/** 格式化 info 值（处理 LP 坐标等对象类型） */
+const _formatInfoVal = (value) => {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') {
+    if ('x' in value && 'y' in value) return `x=${value.x}, y=${value.y}`
+    return JSON.stringify(value)
+  }
+  return String(value)
+}
+
 /** 显示设备信息工具提示 */
 const _showTooltip = (device, rect) => {
   if (!tooltipRect || !tooltipText || !stage) return
@@ -127,16 +137,14 @@ const _showTooltip = (device, rect) => {
   if (!info) return
 
   // 构建信息文本
-  const lines = ['📋 Info']
+  const lines = [device._isDetail ? '📋 Detail Info' : '📋 Macro Info']
   for (const [key, value] of Object.entries(info)) {
-    if (value !== null && value !== undefined && value !== '') {
-      let label = key
-      // 让中文键名更友好
-      if (key === 'area') label = 'Area'
-      else if (key === 'bay_occupation') label = 'Bay'
-      else if (key === 'direction_flag') label = 'Direction'
-      lines.push(`${label}: ${value}`)
-    }
+    if (value === null || value === undefined || value === '') continue
+    let label = key
+    if (key === 'area') label = 'Area'
+    else if (key === 'bay_occupation') label = 'Bay'
+    else if (key === 'direction_flag') label = 'Direction'
+    lines.push(`${label}: ${_formatInfoVal(value)}`)
   }
   const text = lines.join('\n')
 
@@ -368,13 +376,20 @@ const renderDevices = () => {
     })
 
     const fontSize = Math.max(10, device.width / 9)
-    // 三行显示：direction_flag / 文字 / bay_occupation
-    const info = device.info || {}
-    const line1 = info.direction_flag || ''
-    const line2 = info.文字 || ''
-    const line3 = info.bay_occupation || ''
-    const displayText = [line1, line2, line3].filter(Boolean).join('\n')
-    const lineCount = [line1, line2, line3].filter(Boolean).length
+    let displayText, lineCount
+    if (device._isDetail) {
+      // Detail 模式：显示设备编号
+      displayText = device.id
+      lineCount = 1
+    } else {
+      // Macro 模式：三行显示 direction_flag / 文字 / bay_occupation
+      const info = device.info || {}
+      const l1 = info.direction_flag || ''
+      const l2 = info.文字 || ''
+      const l3 = info.bay_occupation || ''
+      displayText = [l1, l2, l3].filter(Boolean).join('\n')
+      lineCount = [l1, l2, l3].filter(Boolean).length
+    }
 
     cached.label.setAttrs({
       y: device.height / 2 - (fontSize * lineCount) / 2,
