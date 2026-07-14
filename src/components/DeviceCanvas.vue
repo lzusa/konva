@@ -307,11 +307,22 @@ const renderDevices = () => {
     return
   }
 
+  // 根据所有矩形的平均大小计算统一线宽
+  const avgDiag = (() => {
+    if (props.devices.length === 0) return 0
+    let total = 0
+    for (const d of props.devices) {
+      total += Math.sqrt(d.width * d.width + d.height * d.height)
+    }
+    return total / props.devices.length
+  })()
+  const baseStrokeWidth = Math.max(3, avgDiag * 0.003)
+
   props.devices.forEach((device) => {
     const isSelected = device.id === props.selectedId
     const fill = isSelected ? '#ffd4a5' : '#9ec4ff'
     const stroke = '#000000'
-    const strokeWidth = isSelected ? 3 : 2
+    const strokeWidth = isSelected ? baseStrokeWidth * 1.3 : baseStrokeWidth
 
     let cached = deviceNodes.get(device.id)
     if (!cached) {
