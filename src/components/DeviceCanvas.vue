@@ -30,10 +30,6 @@ const props = defineProps({
   zoom: {
     type: Number,
     default: 1
-  },
-  overlapIds: {
-    type: Array,
-    default: () => []
   }
 })
 
@@ -311,13 +307,10 @@ const renderDevices = () => {
     return
   }
 
-  const overlapSet = new Set(props.overlapIds)
-
   props.devices.forEach((device) => {
     const isSelected = device.id === props.selectedId
-    const isOverlap = overlapSet.has(device.id)
-    const fill = isOverlap ? '#ffb3b3' : isSelected ? '#ffd4a5' : '#9ec4ff'
-    const stroke = isOverlap ? '#c81e1e' : isSelected ? '#e46c0a' : '#2a4b8d'
+    const fill = isSelected ? '#ffd4a5' : '#9ec4ff'
+    const stroke = '#000000'
     const strokeWidth = isSelected ? 3 : 2
 
     let cached = deviceNodes.get(device.id)
@@ -470,7 +463,7 @@ watch(() => props.zoom, (newZoom) => {
 
 // P2: 只在设备数据、选中状态、重叠状态变化时重绘
 watch(
-  () => [props.devices, props.selectedId, props.width, props.height, props.overlapIds],
+  () => [props.devices, props.selectedId, props.width, props.height],
   () => {
     if (stage) {
       applyStageSize()

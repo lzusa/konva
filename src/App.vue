@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import DeviceCanvas from './components/DeviceCanvas.vue'
 import DeviceEditModal from './components/DeviceEditModal.vue'
 import DeviceForm from './components/DeviceForm.vue'
@@ -39,17 +39,16 @@ const computeBounds = (data) => {
   }
 }
 
-/** 生成 fallback id（macro layout 可能没有 id 字段） */
+/** 生成 id — macro layout 用 direction_flag - 文字 格式 */
 const makeId = (d, idx) => {
   if (d.id && String(d.id).trim()) return String(d.id).trim()
-  // 从 info 里取 bay_occupation 或 文字 作为 id
+  // macro layout：direction_flag - 文字
   const info = d.info || {}
-  if (info.bay_occupation && String(info.bay_occupation).trim()) {
-    return String(info.bay_occupation).trim()
-  }
-  if (info.文字 && String(info.文字).trim()) {
-    return String(info.文字).trim()
-  }
+  const dir = info.direction_flag ? String(info.direction_flag).trim() : ''
+  const label = info.文字 ? String(info.文字).trim() : ''
+  if (dir && label) return `${dir} - ${label}`
+  if (dir) return dir
+  if (label) return label
   return `M-${idx + 1}`
 }
 
@@ -93,76 +92,6 @@ const selectedDevice = computed(() =>
 )
 
 const existingIds = computed(() => devices.value.map((device) => device.id))
-
-const overlapIds = computed(() => {
-  const list = devices.value
-  // P4: 当设备数量较少时直接用 O(N²)，数量多时用空间哈希
-  if (list.length < 50) {
-    const overlaps = new Set()
-    for (let i = 0; i < list.length; i += 1) {
-      const a = list[i]
-      for (let j = i + 1; j < list.length; j += 1) {
-        const b = list[j]
-        const separated =
-          a.x + a.width <= b.x ||
-          b.x + b.width <= a.x ||
-          a.y + a.height <= b.y ||
-          b.y + b.height <= a.y
-        if (!separated) {
-          overlaps.add(a.id)
-          overlaps.add(b.id)
-        }
-      }
-    }
-    return Array.from(overlaps)
-  }
-
-  // 空间哈希：O(N) 平均复杂度
-  const cellSize = 500
-  const grid = new Map()
-  for (let i = 0; i < list.length; i++) {
-    const d = list[i]
-    const cx0 = Math.floor(d.x / cellSize)
-    const cy0 = Math.floor(d.y / cellSize)
-    const cx1 = Math.floor((d.x + d.width) / cellSize)
-    const cy1 = Math.floor((d.y + d.height) / cellSize)
-    for (let cx = cx0; cx <= cx1; cx++) {
-      for (let cy = cy0; cy <= cy1; cy++) {
-        const key = `${cx},${cy}`
-        if (!grid.has(key)) grid.set(key, [])
-        grid.get(key).push(i)
-      }
-    }
-  }
-
-  const overlaps = new Set()
-  const checked = new Set()
-  for (const [key, indices] of grid.entries()) {
-    for (let i = 0; i < indices.length; i++) {
-      for (let j = i + 1; j < indices.length; j++) {
-        const pairKey = indices[i] < indices[j] ? `${indices[i]}-${indices[j]}` : `${indices[j]}-${indices[i]}`
-        if (checked.has(pairKey)) continue
-        checked.add(pairKey)
-
-        const a = list[indices[i]]
-        const b = list[indices[j]]
-        const separated =
-          a.x + a.width <= b.x ||
-          b.x + b.width <= a.x ||
-          a.y + a.height <= b.y ||
-          b.y + b.height <= a.y
-        if (!separated) {
-          overlaps.add(a.id)
-          overlaps.add(b.id)
-        }
-      }
-    }
-  }
-
-  return Array.from(overlaps)
-})
-
-const hasOverlap = computed(() => overlapIds.value.length > 0)
 
 const addDevice = (device) => {
   devices.value = [...devices.value, device]
@@ -300,9 +229,6 @@ const resetZoom = () => {
           <h2>Layout Canvas</h2>
           <div class="panel__controls">
             <p class="hint">Origin is bottom-left. X → right, Y ↑ up. Click a rectangle to edit.</p>
-            <p v-if="hasOverlap" class="warning-banner">
-              Overlap detected: {{ overlapIds.join(', ') }}
-            </p>
             <div class="zoom">
               <button class="icon-button" type="button" @click="zoomOut">-</button>
               <input
@@ -330,7 +256,6 @@ const resetZoom = () => {
           :width="canvasBounds.width"
           :height="canvasBounds.height"
           :zoom="zoom"
-          :overlap-ids="overlapIds"
           @select="openEdit"
           @zoom="setZoom"
         />
