@@ -2,6 +2,8 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Konva from 'konva'
 
+const emit = defineEmits(['select', 'zoom', 'fit'])
+
 const props = defineProps({
   devices: {
     type: Array,
@@ -30,15 +32,27 @@ const props = defineProps({
   zoom: {
     type: Number,
     default: 1
+  },
+  bgSvgUrl: {
+    type: String,
+    default: null
+  },
+  bgSvgMeta: {
+    type: Object,
+    default: null
+  },
+  showBg: {
+    type: Boolean,
+    default: false
   }
 })
-
-const emit = defineEmits(['select', 'zoom', 'fit'])
 
 const containerRef = ref(null)
 let stage = null
 let layer = null
 let gridLayer = null
+let bgSvgLayer = null
+let bgSvgImage = null
 let tooltipLayer = null
 let tooltipRect = null
 let tooltipText = null
@@ -243,6 +257,11 @@ const createStage = () => {
 
   gridLayer = new Konva.FastLayer({ listening: false })
   stage.add(gridLayer)
+
+  // 背景 SVG 图层（grid 之上，设备之下）
+  bgSvgLayer = new Konva.Layer({ listening: false })
+  bgSvgLayer.hide()
+  stage.add(bgSvgLayer)
 
   layer = new Konva.Layer()
   stage.add(layer)
@@ -486,6 +505,46 @@ watch(
 )
 
 defineExpose({ autoFit })
+
+// 背景 SVG 加载/切换
+const loadBgSvg = (url, meta) => {
+  if (!bgSvgLayer || !url || !meta) return
+
+  const img = new window.Image()
+  img.onload = () => {
+    // 销毁旧图
+    if (bgSvgImage) {
+      bgSvgImage.destroy()
+      bgSvgImage = null
+    }
+
+    const bbox = meta.bbox
+    bgSvgImage = new Konva.Image({
+      image: img,
+      x: bbox.minX - props.minX,
+      y: (props.height + props.minY) - bbox.maxY,
+      width: bbox.maxX - bbox.minX,
+      height: bbox.maxY - bbox.minY,
+      opacity: 0.3,
+      listening: false,
+    })
+    bgSvgLayer.add(bgSvgImage)
+    bgSvgLayer.visible(props.showBg)
+    bgSvgLayer.batchDraw()
+  }
+  img.src = url
+}
+
+watch(() => [props.bgSvgUrl, props.bgSvgMeta], ([url, meta]) => {
+  loadBgSvg(url, meta)
+})
+
+watch(() => props.showBg, (show) => {
+  if (bgSvgLayer) {
+    bgSvgLayer.visible(show && !!bgSvgImage)
+    if (stage) stage.batchDraw()
+  }
+})
 
 // zoom 变化时只更新缩放
 watch(() => props.zoom, (newZoom) => {

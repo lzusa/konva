@@ -1,0 +1,11 @@
+{
+  "layer": "LayerB",
+  "source": "/tmp/test_layer.dxf",
+  "bbox": {
+    "minX": 0.0,
+    "minY": 0.0,
+    "maxX": 200.0,
+    "maxY": 100.0
+  },
+  "entityCount": 2
+}

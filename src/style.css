@@ -337,6 +337,11 @@ p {
   cursor: pointer;
 }
 
+.icon-button--active {
+  background: #9ec4ff;
+  border-color: #0f1c3f;
+}
+
 /* ========== Canvas 样式 ========== */
 .canvas {
   border-radius: 18px;

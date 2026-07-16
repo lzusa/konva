@@ -13,6 +13,9 @@ const maxZoom = 1
 
 const devices = ref([])
 const devicesLoading = ref(true)
+const bgSvgUrl = ref(null)
+const bgSvgMeta = ref(null)
+const showBg = ref(false)
 
 /** 从数据计算画布边界（兼容负坐标） */
 const computeBounds = (data) => {
@@ -74,6 +77,22 @@ onMounted(async () => {
     // output_eq.json not available, start with empty devices
   } finally {
     devicesLoading.value = false
+  }
+
+  // 加载背景 SVG
+  try {
+    const [svgRes, metaRes] = await Promise.all([
+      fetch('/raw_layer.svg'),
+      fetch('/raw_layer_meta.json'),
+    ])
+    if (svgRes.ok && metaRes.ok) {
+      const svgText = await svgRes.text()
+      const blob = new Blob([svgText], { type: 'image/svg+xml' })
+      bgSvgUrl.value = URL.createObjectURL(blob)
+      bgSvgMeta.value = await metaRes.json()
+    }
+  } catch {
+    // 无背景 SVG 时正常降级
   }
 
   window.addEventListener('keydown', handleKeydown)
@@ -242,6 +261,13 @@ const resetZoom = () => {
               <button class="icon-button" type="button" @click="resetZoom">Reset</button>
               <button class="icon-button" type="button" @click="fitView">Fit</button>
               <button class="icon-button" type="button" @click="toggleFullscreen">{{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}</button>
+              <button
+                v-if="bgSvgUrl"
+                class="icon-button"
+                :class="{ 'icon-button--active': showBg }"
+                type="button"
+                @click="showBg = !showBg"
+              >{{ showBg ? 'Hide BG' : 'Show BG' }}</button>
               <span class="zoom__value">{{ Math.round(zoom * 100) }}%</span>
             </div>
           </div>
@@ -255,6 +281,9 @@ const resetZoom = () => {
           :width="canvasBounds.width"
           :height="canvasBounds.height"
           :zoom="zoom"
+          :bg-svg-url="bgSvgUrl"
+          :bg-svg-meta="bgSvgMeta"
+          :show-bg="showBg"
           @select="openEdit"
           @zoom="setZoom"
         />
