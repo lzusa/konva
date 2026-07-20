@@ -17,13 +17,13 @@ const bgSvgUrl = ref(null)
 const bgSvgMeta = ref(null)
 const showBg = ref(false)
 
-/** 从数据计算画布边界（兼容负坐标） */
-const computeBounds = (data) => {
-  if (!data || data.length === 0) {
+/** 从数据计算画布边界（兼容负坐标），可选纳入背景 bbox */
+const computeBounds = (data, bgBbox) => {
+  if ((!data || data.length === 0) && !bgBbox) {
     return { minX: 0, minY: 0, width: 800000, height: 200000 }
   }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-  for (const d of data) {
+  for (const d of (data || [])) {
     const x = Number(d.x)
     const y = Number(d.y)
     const w = Number(d.width) || 0
@@ -32,6 +32,13 @@ const computeBounds = (data) => {
     if (y < minY) minY = y
     if (x + w > maxX) maxX = x + w
     if (y + h > maxY) maxY = y + h
+  }
+  // 纳入背景 bbox
+  if (bgBbox) {
+    if (bgBbox.minX < minX) minX = bgBbox.minX
+    if (bgBbox.minY < minY) minY = bgBbox.minY
+    if (bgBbox.maxX > maxX) maxX = bgBbox.maxX
+    if (bgBbox.maxY > maxY) maxY = bgBbox.maxY
   }
   // 给边界留 padding
   return {
@@ -90,6 +97,15 @@ onMounted(async () => {
       const blob = new Blob([svgText], { type: 'image/svg+xml' })
       bgSvgUrl.value = URL.createObjectURL(blob)
       bgSvgMeta.value = await metaRes.json()
+      // 将背景 bbox 纳入画布边界，确保全量可见
+      if (bgSvgMeta.value && bgSvgMeta.value.bbox) {
+        canvasBounds.value = computeBounds(devices.value, bgSvgMeta.value.bbox)
+        // 等 DOM 更新后触发自适应
+        await new Promise(resolve => setTimeout(resolve, 100))
+        if (canvasRef.value) {
+          canvasRef.value.autoFit()
+        }
+      }
     }
   } catch {
     // 无背景 SVG 时正常降级

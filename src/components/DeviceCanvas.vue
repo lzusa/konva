@@ -58,6 +58,7 @@ let tooltipRect = null
 let tooltipText = null
 let resizeObserver = null
 let bgRect = null
+let originLayer = null
 const gridSpacing = 100
 const gridColors = ['#f6f7fb', '#ffffff']
 
@@ -288,6 +289,53 @@ const createStage = () => {
   tooltipLayer.add(tooltipText)
   stage.add(tooltipLayer)
 
+  // 原点标记层：DXF (0,0) 十字准线
+  originLayer = new Konva.Layer()
+  const ox = -props.minX
+  const oy = props.height + props.minY
+  const crossLen = 5000
+  originLayer.add(new Konva.Line({
+    points: [ox - crossLen, oy, ox + crossLen, oy],
+    stroke: '#ff4444',
+    strokeWidth: 4,
+    listening: false,
+  }))
+  originLayer.add(new Konva.Line({
+    points: [ox, oy - crossLen, ox, oy + crossLen],
+    stroke: '#ff4444',
+    strokeWidth: 4,
+    listening: false,
+  }))
+  originLayer.add(new Konva.Circle({
+    x: ox, y: oy, radius: 8,
+    fill: '#ff4444',
+    listening: false,
+  }))
+  originLayer.add(new Konva.Text({
+    x: ox + 12, y: oy + 12,
+    text: 'Origin (0,0)',
+    fontSize: 14, fill: '#ff4444',
+    fontFamily: 'Arial, sans-serif',
+    listening: false,
+  }))
+  stage.add(originLayer)
+
+  // 悬浮坐标显示（HTML 层，固定在画布左上角，不受 stage 缩放影响）
+  const coordEl = document.createElement('div')
+  coordEl.style.cssText = 'position:absolute;top:8px;left:8px;z-index:99;pointer-events:none;'
+    + 'background:rgba(0,0,0,0.7);color:#fff;font:12px monospace;padding:4px 8px;border-radius:3px;'
+    + 'white-space:nowrap;'
+  containerRef.value.appendChild(coordEl)
+
+  stage.on('mousemove', () => {
+    const ptr = stage.getPointerPosition()
+    if (!ptr) return
+    const scale = stage.scaleX()
+    const wx = (ptr.x - stage.x()) / scale + props.minX
+    const wy = props.height + props.minY - (ptr.y - stage.y()) / scale
+    coordEl.textContent = `DXF: (${wx.toFixed(0)}, ${wy.toFixed(0)})`
+  })
+
   stage.on('click', (event) => {
     if (event.target === stage) {
       emit('select', null)
@@ -508,29 +556,54 @@ defineExpose({ autoFit })
 
 // 背景 SVG 加载/切换
 const loadBgSvg = (url, meta) => {
-  if (!bgSvgLayer || !url || !meta) return
+  if (!bgSvgLayer || !url || !meta) {
+    console.warn('[bgSvg] 跳过: layer/url/meta 缺失', { layer: !!bgSvgLayer, url, meta })
+    return
+  }
+
+  const bbox = meta.bbox
+  if (!bbox) {
+    console.warn('[bgSvg] meta.bbox 缺失', meta)
+    return
+  }
+  const imgW = meta.svgWidth ?? (bbox.maxX - bbox.minX)
+  const imgH = meta.svgHeight ?? (bbox.maxY - bbox.minY)
+  console.log('[bgSvg] 开始加载, meta 尺寸:', imgW, '×', imgH, 'bbox:', bbox)
 
   const img = new window.Image()
+  img.onerror = (err) => {
+    console.error('[bgSvg] SVG 加载失败', err)
+  }
   img.onload = () => {
+    const natW = img.naturalWidth
+    const natH = img.naturalHeight
+    console.log('[bgSvg] SVG 加载完成, 原始尺寸:', natW, '×', natH, '期望:', imgW, '×', imgH)
+
     // 销毁旧图
     if (bgSvgImage) {
       bgSvgImage.destroy()
       bgSvgImage = null
     }
 
-    const bbox = meta.bbox
+    const konvaX = bbox.minX - props.minX
+    const konvaY = (props.height + props.minY) - bbox.maxY
+    console.log('[bgSvg] Konva 放置位置: x=', konvaX, 'y=', konvaY,
+      'canvas props: minX=', props.minX, 'minY=', props.minY,
+      'width=', props.width, 'height=', props.height)
+
     bgSvgImage = new Konva.Image({
       image: img,
-      x: bbox.minX - props.minX,
-      y: (props.height + props.minY) - bbox.maxY,
-      width: bbox.maxX - bbox.minX,
-      height: bbox.maxY - bbox.minY,
+      x: konvaX,
+      y: konvaY,
+      width: imgW,
+      height: imgH,
       opacity: 0.3,
       listening: false,
     })
     bgSvgLayer.add(bgSvgImage)
     bgSvgLayer.visible(props.showBg)
     bgSvgLayer.batchDraw()
+    console.log('[bgSvg] Konva.Image 已添加到图层, visible=', props.showBg)
   }
   img.src = url
 }
