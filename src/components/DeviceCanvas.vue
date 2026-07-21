@@ -245,6 +245,36 @@ const autoFit = () => {
   stage.batchDraw()
 }
 
+/** 将指定机台放大并居中到当前可视区域 */
+const focusDevice = (deviceId) => {
+  if (!stage) return false
+
+  const device = props.devices.find((item) => item.id === deviceId)
+  if (!device) return false
+
+  const { width: viewWidth, height: viewHeight } = getContainerSize()
+  if (viewWidth <= 0 || viewHeight <= 0) return false
+
+  const screenPadding = 80
+  const targetZoom = Math.min(
+    (viewWidth - screenPadding * 2) / Math.max(device.width, 1),
+    (viewHeight - screenPadding * 2) / Math.max(device.height, 1),
+    1
+  )
+  const nextZoom = Math.max(targetZoom, 0.001)
+  const centerX = device.x - props.minX + device.width / 2
+  const centerY = toKonvaY(device.y, device.height) + device.height / 2
+
+  stage.scale({ x: nextZoom, y: nextZoom })
+  stage.position({
+    x: viewWidth / 2 - centerX * nextZoom,
+    y: viewHeight / 2 - centerY * nextZoom
+  })
+  emit('zoom', nextZoom)
+  stage.batchDraw()
+  return true
+}
+
 const createStage = () => {
   const { width, height } = getContainerSize()
   stage = new Konva.Stage({
@@ -395,9 +425,9 @@ const renderDevices = () => {
 
   props.devices.forEach((device) => {
     const isSelected = device.id === props.selectedId
-    const fill = isSelected ? '#ffd4a5' : '#9ec4ff'
-    const stroke = '#000000'
-    const strokeWidth = isSelected ? baseStrokeWidth * 1.3 : baseStrokeWidth
+    const fill = isSelected ? '#ffd166' : '#9ec4ff'
+    const stroke = isSelected ? '#e64500' : '#000000'
+    const strokeWidth = isSelected ? baseStrokeWidth * 2 : baseStrokeWidth
 
     let cached = deviceNodes.get(device.id)
     if (!cached) {
@@ -439,7 +469,10 @@ const renderDevices = () => {
       height: device.height,
       fill,
       stroke,
-      strokeWidth
+      strokeWidth,
+      shadowColor: isSelected ? '#ff5a1f' : undefined,
+      shadowBlur: isSelected ? Math.max(12, baseStrokeWidth * 4) : 0,
+      shadowOpacity: isSelected ? 0.8 : 0
     })
 
     const fontSize = Math.max(10, device.width / 9)
@@ -552,7 +585,7 @@ watch(
   { deep: true }
 )
 
-defineExpose({ autoFit })
+defineExpose({ autoFit, focusDevice })
 
 // 背景 SVG 加载/切换
 const loadBgSvg = (url, meta) => {

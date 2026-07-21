@@ -226,6 +226,55 @@ p {
   gap: 12px;
 }
 
+.device-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.device-search__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.device-search__input {
+  width: 170px;
+  border: 1px solid rgba(15, 24, 38, 0.2);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+}
+
+.device-search__input:focus {
+  outline: 2px solid rgba(255, 140, 66, 0.45);
+  border-color: var(--accent-deep);
+}
+
+.device-search__button {
+  background: var(--accent);
+  border-color: var(--accent-deep);
+}
+
+.device-search__error {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  padding: 5px 9px;
+  border: 1px solid rgba(176, 43, 31, 0.25);
+  border-radius: 8px;
+  background: #fff4f1;
+  color: #b02b1f;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(15, 24, 38, 0.12);
+}
+
 .hint {
   color: var(--ink-soft);
   font-size: 0.9rem;

@@ -218,6 +218,34 @@ const handleKeydown = (e) => {
 
 const canvasRef = ref(null)
 
+const searchId = ref('')
+const searchError = ref('')
+
+const searchDevice = () => {
+  const query = searchId.value.trim()
+  searchError.value = ''
+
+  if (!query) {
+    searchError.value = '请输入机台 ID'
+    return
+  }
+
+  const device = devices.value.find(
+    (item) => item._isDetail && item.id.toLocaleLowerCase() === query.toLocaleLowerCase()
+  )
+
+  if (!device) {
+    selectedId.value = null
+    searchError.value = `未找到 ID 为“${query}”的机台`
+    return
+  }
+
+  searchId.value = device.id
+  selectedId.value = device.id
+  isEditOpen.value = false
+  canvasRef.value?.focusDevice(device.id)
+}
+
 const fitView = () => {
   if (canvasRef.value && devices.value.length > 0) {
     canvasRef.value.autoFit()
@@ -263,6 +291,20 @@ const resetZoom = () => {
           <h2>Layout Canvas</h2>
           <div class="panel__controls">
             <p class="hint">Origin is bottom-left. X → right, Y ↑ up. Click a rectangle to edit.</p>
+            <form class="device-search" role="search" @submit.prevent="searchDevice">
+              <label class="device-search__label" for="device-id-search">机台 ID</label>
+              <input
+                id="device-id-search"
+                v-model="searchId"
+                class="device-search__input"
+                type="search"
+                placeholder="例如 EQ-1001"
+                autocomplete="off"
+                @input="searchError = ''"
+              />
+              <button class="icon-button device-search__button" type="submit">搜索</button>
+              <span v-if="searchError" class="device-search__error" role="alert">{{ searchError }}</span>
+            </form>
             <div class="zoom">
               <button class="icon-button" type="button" @click="zoomOut">-</button>
               <input
