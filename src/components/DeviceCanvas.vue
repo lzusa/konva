@@ -61,6 +61,9 @@ let bgRect = null
 let originLayer = null
 const gridSpacing = 100
 const gridColors = ['#f6f7fb', '#ffffff']
+// 搜索聚焦时让设备保留足够的周边环境，避免小设备被放大到占满视口。
+const focusViewportRatio = 0.45
+const maxFocusZoom = 0.5
 
 /**
  * 将用户坐标系（左下角原点，Y向上）转换为 Konva 屏幕坐标（左上角原点，Y向下）
@@ -255,11 +258,12 @@ const focusDevice = (deviceId) => {
   const { width: viewWidth, height: viewHeight } = getContainerSize()
   if (viewWidth <= 0 || viewHeight <= 0) return false
 
-  const screenPadding = 80
+  // 目标设备最多占视口宽高的 45%，同时限制绝对缩放倍率。
+  // 相比按固定边距铺满视口，可以在聚焦后继续看到设备周边布局。
   const targetZoom = Math.min(
-    (viewWidth - screenPadding * 2) / Math.max(device.width, 1),
-    (viewHeight - screenPadding * 2) / Math.max(device.height, 1),
-    1
+    (viewWidth * focusViewportRatio) / Math.max(device.width, 1),
+    (viewHeight * focusViewportRatio) / Math.max(device.height, 1),
+    maxFocusZoom
   )
   const nextZoom = Math.max(targetZoom, 0.001)
   const centerX = device.x - props.minX + device.width / 2
